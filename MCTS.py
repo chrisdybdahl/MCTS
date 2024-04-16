@@ -1,7 +1,7 @@
 class MCTS:
     def __init__(self, M):
         """
-        Initialize your data here
+        Initialize MCTS parameters here
 
         Parameters:
             M (int): the number simulations each move in the actual game stems from,
