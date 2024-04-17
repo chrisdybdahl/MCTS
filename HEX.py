@@ -51,13 +51,29 @@ class Board:
         neighbors = {}
         for x in range(self.width):
             for y in range(self.height):
-                neighbors_coords = [(y, x) + offset for offset in offsets if self.valid_position(y, x)]
+                neighbors_coords = [(y + offset_y, x + offset_x) for offset_x, offset_y in offsets if
+                                    self.valid_position(y + offset_y, x + offset_x)]
                 neighbors[(y, x)] = neighbors_coords
         return neighbors
 
     def print_board(self):
-        for y in range(self.height):
-            print("  " * y, self.board[y, :], sep="", flush=True)  # TODO: Double check whether print is correct
+        """
+        Prints the board in hex format
+
+        """
+        hex_height = self.height * 2 - 1
+        hex_width = self.width
+
+        for row in range(hex_height):
+            row_string = ""
+            for space in range(abs(hex_width - row - 1)):
+                row_string += " "
+
+            for x in range(max([row - hex_width + 1, 0]), min([row + 1, hex_width])):
+                y = row - x
+                row_string += f" {self.get_cell(y, x)}"
+
+            print(row_string)
 
 
 class Hex(TwoPlayerGame):
@@ -66,7 +82,6 @@ class Hex(TwoPlayerGame):
         self.height = height
         self.width = width
         self.board = Board(height, width)
-        #  TODO: Stop the game when self.state is 0
 
     def __dfs(self, y, x, player):
         """
@@ -88,14 +103,14 @@ class Hex(TwoPlayerGame):
             elif current_y + 1 == self.height and player == 2:
                 return 2
 
-            explored.add((current_x, current_y))
+            explored.add((current_y, current_x))
 
             for neigh_y, neigh_x in self.board.neighbors[(current_y, current_x)]:
                 if (neigh_y, neigh_x) in explored or self.board.get_cell(neigh_y, neigh_x) != player:
                     continue
-                front.append((y, x))
+                front.append((neigh_y, neigh_x))
 
-            return 0
+        return 0
 
     def update_state(self):
         """
@@ -108,13 +123,13 @@ class Hex(TwoPlayerGame):
 
         for y, x in player_1_start_coords:
             leaf = self.__dfs(y, x, 1)
-            if not leaf:
+            if leaf:
                 self.state = leaf
                 return self.state
 
         for y, x in player_2_start_coords:
             leaf = self.__dfs(y, x, 2)
-            if not leaf:
+            if leaf:
                 self.state = leaf
                 return self.state
 
@@ -155,7 +170,7 @@ class Hex(TwoPlayerGame):
             while invalid_action:
                 x = int(input('x: '))
                 y = int(input('y: '))
-                new_board = self.do_action((x, y))
+                new_board = self.do_action((y, x))
                 if new_board is not None:
                     invalid_action = False
 
@@ -166,5 +181,5 @@ class Hex(TwoPlayerGame):
 
 
 if __name__ == '__main__':
-    game = Hex(3, 3)
+    game = Hex(4, 4)
     game.play()

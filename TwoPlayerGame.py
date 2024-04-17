@@ -1,7 +1,7 @@
 class TwoPlayerGame:
     def __init__(self):
         """
-        Creates an instance of game
+        Creates an instance of the game
 
         """
         self.current_player = 1  # Assume player_1 begins
@@ -9,13 +9,13 @@ class TwoPlayerGame:
 
     def get_actions(self):
         """
-        Returns the possible action for the state
+        Returns the possible actions for the state
         """
         pass
 
     def do_action(self, action):
         """
-        Removes pieces from the board
+        Performs the action
 
         :param action: action to be performed
         """
@@ -29,7 +29,7 @@ class TwoPlayerGame:
         """
         return self.state
 
-    def current_player(self):
+    def get_current_player(self):
         """
         Returns the current player of the game
 
