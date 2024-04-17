@@ -5,6 +5,9 @@ class Node:
 
         :param parent: Parent node
         """
+        global i
+        i += 1
+        self.number = i
         self.parent = parent
         self.game = game
         self.children = []
