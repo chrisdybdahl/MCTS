@@ -1,6 +1,6 @@
 import copy
 import random
-from typing import Callable
+from typing import Callable, Tuple, Any, List
 
 import numpy as np
 
@@ -100,7 +100,7 @@ class Node:
         return self.q
 
 
-def uct_score(parent_node: Node, **kwargs):
+def uct_score(parent_node: Node, **kwargs) -> Node:
     c = kwargs['c'] if 'c' in kwargs.keys() else 1.41
 
     uct: lambda child_wins, child_visits, parent_visits, a: (child_wins / child_visits) + a * np.sqrt(
@@ -123,34 +123,33 @@ def rollout(node: Node) -> float:
     :return: game result from rollout simulation
     """
     rollout_game = node.get_game()
-    current_player = rollout_game.get_current_player()
 
     while not rollout_game.get_win_state():
         possible_actions = rollout_game.get_actions()
         action = random.choice(possible_actions)
         rollout_game.do_action(action)
 
-    game_win_state = rollout_game.get_win_state()  # TODO: check if correct or if player_1 win should always be 1
+    game_win_state = rollout_game.get_win_state()  # TODO: check if correct or always if player_1 wins, return 1
 
-    if not game_win_state:  # If draw return 0
-        return 0
-    if game_win_state == current_player:  # If current player won return 1
+    # Assume all evaluations are from the perspective of player_1
+    if game_win_state == 1:  # If player_1 won return 1
         return 1
-    return -1  # If current player lost return -1
+    if game_win_state == 2:  # If player_2 won return -1
+        return -1
+    return 0  # If draw return 0
 
 
 class MCTS:
-    def __init__(self, tree_policy_func: Callable[[Node, ...], Node], neural_net=None):
+    def __init__(self, tree_policy_func: Callable[[Node], Node]):
         """
         Initialize MCTS parameters here
 
         :param tree_policy_func: tree policy function
         """
-        self.neural_net = neural_net
         self.tree_policy_func = tree_policy_func
         self.M = None
 
-    def critic(self, node: Node):
+    def critic(self, node: Node) -> float:
         """
         Produce evaluation of leaf node using the critic-RL neural network
 
@@ -162,7 +161,7 @@ class MCTS:
         critic_evaluation = 1  # TODO: Implement neural net critic_evaluation with self
         return critic_evaluation
 
-    def run(self, game: TwoPlayerGame, m: int = 500, **kwargs):
+    def run(self, game: TwoPlayerGame, m: int = 500, **kwargs) -> tuple[int, list[float]]:
         """
         Run the MCTS
 
@@ -171,7 +170,6 @@ class MCTS:
         :param kwargs:
         :return: best action
         """
-        current_player = game.get_current_player()
         root_node = Node(game)
 
         value_lambda = None
@@ -183,7 +181,7 @@ class MCTS:
 
         for _ in range(m):
             # Tree search - choose node from root to leaf node using tree policy
-            policy_node = self.tree_policy_func(root_node, kwargs)
+            policy_node = self.tree_policy_func(root_node, kwargs)  # TODO: Tree policy chose among all created nodes? Depth-First-Search?
 
             # Node expansion - generate some or all child states of a parent state
             possible_actions = policy_node.get_possible_actions()
@@ -205,7 +203,12 @@ class MCTS:
             # Backpropagation - passing the evaluation back up the tree, updating relevant data
             expanded_node.update(leaf_evaluation)
 
+            # TODO: Implement timelimit
+
         # Choose best action from the root by the highest visit count
         best_action = max(root_node.get_children(), key=lambda child: child.get_value())
 
-        return best_action
+        # Action probabilities from the root
+        action_probabilities = [child.get_visits() / root_node.get_visits() for child in root_node.get_children()]
+
+        return best_action, action_probabilities

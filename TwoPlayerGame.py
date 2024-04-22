@@ -45,7 +45,7 @@ class TwoPlayerGame:
         """
         pass
 
-    def get_board_state(self) -> object:
+    def get_board_state(self) -> object:  # TODO: return list?
         """
         Returns the board state of the game
 

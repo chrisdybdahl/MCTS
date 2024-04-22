@@ -81,7 +81,7 @@ class Board:
 
         :return: board array
         """
-        return self.board
+        return self.board.copy()
 
 
 class Hex(TwoPlayerGame):
@@ -175,11 +175,11 @@ class Hex(TwoPlayerGame):
 
     def get_board_state(self) -> object:
         """
-        Returns the board state  TODO: Should state include player turn or winner state?
+        Returns the board state and current player  TODO: Should state include player turn or winner state?
 
-        :return: board array
+        :return: flattened array of board and current player
         """
-        return self.board.get_board()
+        return np.append(self.board.get_board().flatten(), self.current_player)
 
     def visualize(self):
         self.board.print_board()

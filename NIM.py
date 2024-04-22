@@ -46,7 +46,7 @@ class NIM(TwoPlayerGame):
 
         :return: number of pieces left
         """
-        return self.N
+        return [self.N, self.current_player]
 
     def visualize(self):
         """
