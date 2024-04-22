@@ -8,7 +8,7 @@ class Board:
         self.height = height
         self.width = width
         self.board = np.zeros((height, width), dtype=int)
-        self.neighbors = self.connect_neighbors()
+        self.neighbors = self.__connect_neighbors()
 
     def get_cell(self, y, x):
         """
@@ -41,7 +41,7 @@ class Board:
         """
         return 0 <= x < self.width and 0 <= y < self.height
 
-    def connect_neighbors(self):
+    def __connect_neighbors(self):
         """
         Creates a dictionary of all the connected neighbors
 
@@ -74,6 +74,14 @@ class Board:
                 row_string += f" {self.get_cell(y, x)}"
 
             print(row_string)
+
+    def get_board(self):
+        """
+        Returns the board array
+
+        :return: board array
+        """
+        return self.board
 
 
 class Hex(TwoPlayerGame):
@@ -112,7 +120,7 @@ class Hex(TwoPlayerGame):
 
         return 0
 
-    def update_state(self):
+    def __update_state(self):
         """
         Updates the state by running DFS for player_1 (from x = 0) and player_2 (from y = 0) where they have pieces
 
@@ -124,62 +132,59 @@ class Hex(TwoPlayerGame):
         for y, x in player_1_start_coords:
             leaf = self.__dfs(y, x, 1)
             if leaf:
-                self.state = leaf
-                return self.state
+                self.win_state = leaf
+                return self.win_state
 
         for y, x in player_2_start_coords:
             leaf = self.__dfs(y, x, 2)
             if leaf:
-                self.state = leaf
-                return self.state
+                self.win_state = leaf
+                return self.win_state
 
-        return self.state
+        return self.win_state
 
-    def do_action(self, action):
+    def get_actions(self) -> list:
+        valid_actions = [(y, x) for y in range(self.height) for x in range(self.width) if not self.board.get_cell(y, x)]
+        return valid_actions
+
+    def choose_move(self) -> object:
+        x = int(input('x: '))
+        y = int(input('y: '))
+        return y, x
+
+    def do_action(self, action) -> bool:
         """
         Executes the given action and updates the state of the game
 
         :param action: tuple of (x, y) coordinates
-        :return: resulting board if action is valid, None otherwise
+        :return: True if action is valid, False otherwise
         """
 
         y, x = action
         if not self.board.valid_position(y, x):
             print(f'Coordinate ({y},{x}) is out of bounds')
-            return None
+            return False
         if self.board.get_cell(y, x):
             print(f'Coordinate ({y},{x}) is already placed')
-            return None
+            return False
         self.board.set_cell(y, x, self.current_player)
         self.current_player = 3 - self.current_player
 
-        self.update_state()
+        self.__update_state()
+        return True
 
-        return self.board
+    def get_board_state(self) -> object:
+        """
+        Returns the board state  TODO: Should state include player turn or winner state?
 
-    def get_actions(self):
-        valid_actions = [(y, x) for y in range(self.height) for x in range(self.width) if not self.board.get_cell(y, x)]
-        return valid_actions
+        :return: board array
+        """
+        return self.board.get_board()
 
     def visualize(self):
         self.board.print_board()
 
-    def play(self):
-        while not self.state:
-            invalid_action = True
-            while invalid_action:
-                x = int(input('x: '))
-                y = int(input('y: '))
-                new_board = self.do_action((y, x))
-                if new_board is not None:
-                    invalid_action = False
-
-            self.visualize()
-
-            if self.state:
-                print(f'Player {self.state} won!')
-
 
 if __name__ == '__main__':
-    game = Hex(4, 4)
+    game = Hex(3, 3)
     game.play()

@@ -13,25 +13,48 @@ class NIM(TwoPlayerGame):
         self.N = N
         self.K = K
 
-    def get_actions(self):
+    def get_actions(self) -> list:
         """
         Returns the possible action for the state
         """
-        pass
+        return list(range(self.N + 1))
 
-    def do_action(self, removed_pieces):
+    def choose_move(self) -> object:
+        return int(input('Number of pieces to remove: '))
+
+    def do_action(self, action) -> bool:
         """
         Removes pieces from the board
 
-        :param removed_pieces: list of tuples which represent the coordinates of the pieces to remove
+        :param action: list of tuples which represent the coordinates of the pieces to remove
+        :return: True if action is valid, False otherwise
         """
-        pass
+        if 1 <= action <= self.K and 0 <= self.N - action:
+            self.N -= action
+
+            if not self.N:
+                self.win_state = self.current_player
+
+            self.current_player = 3 - self.current_player
+            return True
+        print(f'Invalid action: {action}')
+        return False
+
+    def get_board_state(self) -> object:
+        """
+        Returns the board state
+
+        :return: number of pieces left
+        """
+        return self.N
 
     def visualize(self):
         """
         Visualizes the board
         """
-        pass
+        print(f'Pieces left: {self.N}')
 
-    def play(self):
-        super().play()
+
+if __name__ == '__main__':
+    game = NIM(10, 4)
+    game.play()
