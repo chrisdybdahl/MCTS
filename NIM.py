@@ -1,3 +1,6 @@
+import numpy as np
+from numpy.typing import NDArray
+
 from TwoPlayerGame import TwoPlayerGame
 
 
@@ -12,27 +15,28 @@ class NIM(TwoPlayerGame):
         super().__init__()
         self.N = N
         self.K = K
+        self.pieces_left = N
 
     def get_actions(self) -> list:
-        """
-        Returns the possible action for the state
-        """
+        return list(range(self.pieces_left + 1))
+
+    def get_all_actions(self) -> list:
         return list(range(self.N + 1))
 
     def choose_move(self) -> object:
-        return int(input('Number of pieces to remove: '))
+        return int(input(f'Number of pieces to remove (K = {self.K}): '))
 
     def do_action(self, action) -> bool:
         """
         Removes pieces from the board
 
-        :param action: list of tuples which represent the coordinates of the pieces to remove
+        :param action: number of pieces to remove
         :return: True if action is valid, False otherwise
         """
-        if 1 <= action <= self.K and 0 <= self.N - action:
-            self.N -= action
+        if 1 <= action <= self.K and 0 <= self.pieces_left - action:
+            self.pieces_left -= action
 
-            if not self.N:
+            if not self.pieces_left:
                 self.win_state = self.current_player
 
             self.current_player = 3 - self.current_player
@@ -40,19 +44,19 @@ class NIM(TwoPlayerGame):
         print(f'Invalid action: {action}')
         return False
 
-    def get_board_state(self) -> object:
+    def get_board_state(self) -> NDArray:
         """
         Returns the board state
 
         :return: number of pieces left
         """
-        return [self.N, self.current_player]
+        return np.array([[self.pieces_left, self.current_player]])
 
     def visualize(self):
         """
         Visualizes the board
         """
-        print(f'Pieces left: {self.N}')
+        print(f'Pieces left: {self.pieces_left} / {self.N}')
 
 
 if __name__ == '__main__':

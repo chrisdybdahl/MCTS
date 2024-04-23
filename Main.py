@@ -1,32 +1,35 @@
-from keras.layers import Dense
-from keras.models import Sequential
+import tensorflow as tf
 
 from HEX import Hex
 from MCTS import MCTS, uct_score
 from config import FILENAME
 
 
-def train(episodes, size, record_freq, m, epochs):
+def train_hex(episodes, size, record_freq, m, epochs, actor_layers: list[tuple[int, str]], critic_layers: list[tuple[int, str]]):
     """
     Trains the MCTS
 
     :return:
     """
-    # Parameters for neural network
-    num_features = size ** 2 + 1  # Number of input features - n ^ 2 board squares + 1 current player indicator
+    # Parameters for actor neural network
     num_classes = size ** 2  # Number of output probabilities - n ^ 2 board squares
 
-    # Initialize the neural network model
-    # TODO: Change how one chooses the NN parameters and activation functions
-    model = Sequential([
-        Dense(64, activation='relu', input_shape=(num_features,)),
-        Dense(32, activation='relu'),
-        Dense(num_classes, activation='softmax')  # Output layer with softmax activation
-    ])
+    # Initialize the actor neural network model
+    # TODO: Same neural net for actor as for critic?
+    actor_model = tf.keras.models.Sequential()
+    for layer, activation_func in actor_layers:
+        actor_model.add(tf.keras.layers.Dense(layer, activation=activation_func))
+    actor_model.add(tf.keras.layers.Dense(num_classes, activation='softmax'))
 
     # Compile the model using KL divergence as the loss
     # Measuring how one probability distribution diverges from a second, expected probability distribution
-    model.compile(optimizer='adam', loss='kullback_leibler_divergence', metrics=['accuracy'])
+    actor_model.compile(optimizer='adam', loss='kl_divergence', metrics=['accuracy'])
+
+    # Initialize the critic neural network model
+    critic_model = tf.keras.models.Sequential()
+    for layer, activation_func in critic_layers:
+        critic_model.add(tf.keras.layers.Dense(layer, activation=activation_func))
+    critic_model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
 
     # Initialize statistics
     last_20_winners = []
@@ -47,12 +50,15 @@ def train(episodes, size, record_freq, m, epochs):
 
         while not game.get_win_state():
             # Run Monte Carlo Tree Search from the current game
-            mc_action, mc_action_probabilities = mcts.run(game, m=m, value_lambda=0.2)  # Combining the evaluations
+            # TODO: Train critic NN
+            mc_action, mc_action_probabilities = mcts.run(game, critic_net=critic_model, m=m, c=1.4, value_lambda=0.2)
+            print(f'Execute move {mc_action} in game')
             game.do_action(mc_action)
+            print(f'MC Action Probabilities: {mc_action_probabilities}')
 
             # Train actor neural network
             game_state = game.get_board_state()
-            model.fit(game_state, mc_action_probabilities, epochs=epochs)
+            actor_model.fit(game_state, mc_action_probabilities, epochs=epochs)
 
         # Record statistics
         if game.get_win_state() == 1:
@@ -72,4 +78,4 @@ def train(episodes, size, record_freq, m, epochs):
 
 if __name__ == '__main__':
     # Make predictions (outputting probabilities)
-    train(10, 3, 2, 100, 2)
+    train_hex(10, 3, 2, 100, 2, [(32, 'sigmoid'), (32, 'sigmoid')], [(32, 'sigmoid')])

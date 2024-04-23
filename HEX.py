@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.typing import NDArray
 
 from TwoPlayerGame import TwoPlayerGame
 
@@ -31,7 +32,7 @@ class Board:
         """
         self.board[y, x] = value
 
-    def valid_position(self, y, x):
+    def valid_position(self, y, x) -> bool:
         """
         Checks if the given coordinate is valid
 
@@ -75,7 +76,7 @@ class Board:
 
             print(row_string)
 
-    def get_board(self):
+    def get_board(self) -> NDArray:
         """
         Returns the board array
 
@@ -144,8 +145,10 @@ class Hex(TwoPlayerGame):
         return self.win_state
 
     def get_actions(self) -> list:
-        valid_actions = [(y, x) for y in range(self.height) for x in range(self.width) if not self.board.get_cell(y, x)]
-        return valid_actions
+        return [(y, x) for y in range(self.height) for x in range(self.width) if not self.board.get_cell(y, x)]
+
+    def get_all_actions(self) -> list:
+        return [(y, x) for y in range(self.height) for x in range(self.width)]
 
     def choose_move(self) -> object:
         x = int(input('x: '))
@@ -159,7 +162,6 @@ class Hex(TwoPlayerGame):
         :param action: tuple of (x, y) coordinates
         :return: True if action is valid, False otherwise
         """
-
         y, x = action
         if not self.board.valid_position(y, x):
             print(f'Coordinate ({y},{x}) is out of bounds')
@@ -173,13 +175,15 @@ class Hex(TwoPlayerGame):
         self.__update_state()
         return True
 
-    def get_board_state(self) -> object:
+    def get_board_state(self) -> NDArray:
         """
-        Returns the board state and current player  TODO: Should state include player turn or winner state?
+        Returns the board state and current player
 
         :return: flattened array of board and current player
         """
-        return np.append(self.board.get_board().flatten(), self.current_player)
+        board_player_list = self.board.get_board().flatten().tolist()
+        board_player_list.append(self.current_player)
+        return np.array([board_player_list])
 
     def visualize(self):
         self.board.print_board()

@@ -1,3 +1,6 @@
+from numpy.typing import NDArray
+
+
 class TwoPlayerGame:
     def __init__(self):
         """
@@ -25,7 +28,17 @@ class TwoPlayerGame:
 
     def get_actions(self) -> list:
         """
-        Returns the possible actions for the state
+        Returns the valid actions for the current game state
+
+        :return: list of the valid actions for the current game state
+        """
+        pass
+
+    def get_all_actions(self) -> list:
+        """
+        Returns all the actions for the game
+
+        :return: list of all the actions for the game
         """
         pass
 
@@ -42,10 +55,11 @@ class TwoPlayerGame:
         Performs the action
 
         :param action: action to be performed
+        :return: True if action is valid, False otherwise
         """
         pass
 
-    def get_board_state(self) -> object:  # TODO: return list?
+    def get_board_state(self) -> NDArray:  # TODO: return list?
         """
         Returns the board state of the game
 
