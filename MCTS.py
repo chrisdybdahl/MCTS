@@ -212,7 +212,7 @@ class MCTS:
         """
         critic_game = node.get_game()
         game_state = critic_game.get_board_state()
-        critic_evaluation = critic_net.predict(game_state)
+        critic_evaluation = critic_net.predict(game_state, verbose=0)
         return critic_evaluation[0, 0]
 
     def run(self, game: TwoPlayerGame, critic_net: tf.keras.models = None, m: int = 500, c: float = 1, **kwargs) \
