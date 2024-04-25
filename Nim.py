@@ -1,27 +1,29 @@
-import numpy as np
-from numpy.typing import NDArray
-
 from TwoPlayerGame import TwoPlayerGame
 
 
-class NIM(TwoPlayerGame):
-    def __init__(self, N, K):
+class Nim(TwoPlayerGame):
+    def __init__(self, n, k):
         """
         Creates an instance of the NIM board and initializes parameters
 
-        :param N: number of pieces on the board
-        :param K: number of pieces a player maximum can take off the board
+        :param n: number of pieces on the board
+        :param k: number of pieces a player maximum can take off the board
         """
         super().__init__()
-        self.N = N
-        self.K = K
-        self.pieces_left = N
+        self.N = n
+        self.K = k
+        self.pieces_left = n
 
     def get_actions(self) -> list:
-        return list(range(self.pieces_left + 1))
+        return list(range(1, min(self.pieces_left, self.K) + 1))
 
     def get_all_actions(self) -> list:
-        return list(range(self.N + 1))
+        return list(range(1, self.N + 1))
+
+    def reset(self):
+        self.current_player = 1
+        self.win_state = 0
+        self.pieces_left = self.N
 
     def choose_move(self) -> object:
         return int(input(f'Number of pieces to remove (K = {self.K}): '))
@@ -44,13 +46,13 @@ class NIM(TwoPlayerGame):
         print(f'Invalid action: {action}')
         return False
 
-    def get_board_state(self) -> NDArray:
+    def get_board_state(self) -> list:
         """
         Returns the board state
 
         :return: number of pieces left
         """
-        return np.array([[self.pieces_left, self.current_player]])
+        return [self.pieces_left, self.current_player]
 
     def visualize(self):
         """
@@ -60,5 +62,5 @@ class NIM(TwoPlayerGame):
 
 
 if __name__ == '__main__':
-    game = NIM(10, 4)
+    game = Nim(10, 4)
     game.play()

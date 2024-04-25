@@ -1,6 +1,3 @@
-from numpy.typing import NDArray
-
-
 class TwoPlayerGame:
     def __init__(self):
         """
@@ -42,6 +39,13 @@ class TwoPlayerGame:
         """
         pass
 
+    def reset(self):
+        """
+        Resets the game state
+
+        """
+        pass
+
     def choose_move(self) -> object:
         """
         Takes in an input from the user
@@ -59,7 +63,7 @@ class TwoPlayerGame:
         """
         pass
 
-    def get_board_state(self) -> NDArray:  # TODO: return list?
+    def get_board_state(self) -> list:  # TODO: return list?
         """
         Returns the board state of the game
 
