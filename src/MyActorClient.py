@@ -3,11 +3,12 @@ import copy
 from ActorClient import ActorClient
 from Hex import Hex
 from MyHexActor import MyHexActor
+from config import TOKEN
 
 
-class MyClient(ActorClient):
+class MyActionClient(ActorClient):
     def __init__(self, hex_actor: MyHexActor):
-        super().__init__()
+        super().__init__(auth=TOKEN, qualify=False)
         self.actor = copy.deepcopy(hex_actor)
         self.unique_id = None
         self.series_id = None

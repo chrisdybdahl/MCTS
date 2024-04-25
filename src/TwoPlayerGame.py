@@ -24,6 +24,14 @@ class TwoPlayerGame:
         """
         return self.win_state
 
+    def get_starting_player(self):
+        """
+        Returns the starting player of the game
+
+        :return: starting player
+        """
+        return self.starting_player
+
     def get_actions(self) -> list:
         """
         Returns the valid actions for the current game state

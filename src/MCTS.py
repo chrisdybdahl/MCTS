@@ -41,11 +41,12 @@ class MCTS:
             # Get the valid actions
             valid_actions = rollout_game.get_actions()
 
-            # Epsilon greedy strategy to predict probabilities from actor neural network
+            # Probability p to make random move and (1 - p) to make move from actor in rollout game
             if random.random() > epsilon:
-                # Estimate probabilities using actor neural network
+                # Extract game state
                 game_state = rollout_game.get_board_state()
 
+                # Estimate probabilities using actor neural network, either greedily or stochastically
                 action = choose_actor_action(actor_net, possible_actions, valid_actions, game_state, D_POLICY)
             else:
                 action = random.choice(valid_actions)
@@ -97,6 +98,8 @@ class MCTS:
         root_node = Node(game)
 
         for i in range(m):
+            # print(f'Iteration {i + 1}/{m}')
+
             # Tree search - choose node from root to leaf node using tree policy
             policy_node = self.tree_policy_func(root_node, c)
 
@@ -110,7 +113,7 @@ class MCTS:
                 expanded_node = policy_node
 
             # Leaf evaluation - estimate the value of a leaf node using the default policy
-            if critic_net:  # Evaluation using an epsilon greedy strategy to evaluate using critic if critic net exists
+            if critic_net:  # Probability p to evaluate using rollout and (1 - p) using critic if it exists
                 if random.random() > eval_epsilon:
                     leaf_evaluation = self.critic(expanded_node, critic_net)
                 else:
@@ -123,7 +126,7 @@ class MCTS:
 
             # Stop monte carlo search if runtime exceeds timelimit
             if timelimit and time.time() - timer > timelimit:
-                print(f'Timed out in iteration {i}, after {time.time() - timer} seconds')
+                print(f'Timed out in iteration {i + 1}/{m}, after {time.time() - timer} seconds')
                 break
 
         # Choose best action from the root by the highest visit count
