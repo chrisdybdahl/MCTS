@@ -1,58 +1,45 @@
 import numpy as np
-import tensorflow as tf
 
 from Hex import Hex
 from MCTS import MCTS
+from NeuralNet import NeuralNet
 from Nim import Nim
 from TwoPlayerGame import TwoPlayerGame
 from config import FILENAME, EPISODES, RECORD_FREQUENCY, M, ACTOR_EPOCHS, ACTOR_LAYERS, CRITIC_EPOCHS, CRITIC_LAYERS, \
-    HEX_HEIGHT, HEX_WIDTH, NIM_N, NIM_K, BATCH_SIZE, STATE_DISCOUNT, VERBOSE
+    HEX_HEIGHT, HEX_WIDTH, NIM_N, NIM_K, BATCH_SIZE, STATE_DISCOUNT, VERBOSE, OPTIMIZER, ACTOR_LOSS_FUNCTION, METRICS, \
+    CRITIC_LOSS_FUNCTION, LAST_WINNERS_NUM, ROLLOUT_EPSILON, TIMELIMIT, C, EVAL_LAMBDA
 from helpers import uct_score, minibatch_indices
 
 
-def train_mcts(game: TwoPlayerGame, m: int, episodes: int, record_freq: int, batch_size: int,
-               actor_epochs: int, actor_layers: list[tuple[int, str]],
-               critic_epochs: int, critic_layers: list[tuple[int, str]],
-               state_discount: float = 1, verbose: int = 0):
+def train_mcts(game: TwoPlayerGame, m: int, episodes: int, record_freq: int, batch_size: int, filename: str,
+               actor_epochs: int, actor_net: NeuralNet, c: float = 1, rollout_epsilon: float = 1, timelimit: int = 100,
+               verbose: int = 0, last_winners_num: int = 20,
+               critic_epochs: int = None, critic_net: NeuralNet = None, state_discount: float = 1, **critic_param):
     """
     Trains the MCTS
 
-    :param verbose:
     :param game: game to train on
     :param m: number of monte carlo simulations
     :param episodes: number of actual games to play
     :param record_freq: frequency to record neural network weights
     :param batch_size: size of random batch of actual cases to train actor neural network
+    :param filename: filepath to results
     :param actor_epochs: number of epochs to train actor neural network
-    :param actor_layers: layers for actor neural network
+    :param actor_net: actor neural network
+    :param c: parameter for tree policy
+    :param rollout_epsilon: epsilon for epsilon greedy strategy to predict action probabilities
+    :param timelimit: timelimit for monte carlo tree search
+    :param verbose: verbosity level
+    :param last_winners_num: number of last winners to record
     :param critic_epochs: number of epochs to train critic neural network
-    :param critic_layers: layers for critic neural network
+    :param critic_net: critic neural network
     :param state_discount: discount factor for state values to train critic neural network
     """
     # Initialize replay buffer
     replay_buffer = [[], []]
 
-    # Number of outputs for actor neural network
-    num_actions = len(game.get_all_actions())
-
-    # Initialize the actor neural network model
-    # TODO: Same neural net for actor as for critic?
-    # TODO: Create own class to initialize neural nets
-    actor_model = tf.keras.models.Sequential()
-    for layer, activation_func in actor_layers:
-        actor_model.add(tf.keras.layers.Dense(layer, activation=activation_func))
-    actor_model.add(tf.keras.layers.Dense(num_actions, activation='softmax'))
-    actor_model.compile(optimizer='adam', loss='kl_divergence', metrics=['accuracy'])  # Using KL divergence as the loss
-
-    # Initialize the critic neural network model
-    critic_model = tf.keras.models.Sequential()
-    for layer, activation_func in critic_layers:
-        critic_model.add(tf.keras.layers.Dense(layer, activation=activation_func))
-    critic_model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
-    critic_model.compile(optimizer='adam', loss='mse', metrics=['accuracy'])  # Using MSE as the loss
-
     # Initialize statistics
-    last_20_winners = []
+    last_winners = []
     player_1_wins = 0
     player_2_wins = 0
 
@@ -70,9 +57,12 @@ def train_mcts(game: TwoPlayerGame, m: int, episodes: int, record_freq: int, bat
         while not game.get_win_state():
             num_moves += 1
 
-            # Run Monte Carlo Tree Search from the current game TODO: Change how one chooses the evaluation policy
-            mc_action, mc_action_probabilities = mcts.run(game, actor_net=actor_model, critic_net=critic_model, m=m,
-                                                          c=1.4, rollout_epsilon=0.5, value_lambda=0.2)
+            # Run Monte Carlo Tree Search from the current game
+            # TODO: improve rollout_epsilon over time making rollouts less likely
+            # TODO: improve eval_epsilon over time to make more
+            mc_action, mc_action_probabilities = mcts.run(game, m=m, actor_net=actor_net, c=c,
+                                                          rollout_epsilon=rollout_epsilon, timelimit=timelimit,
+                                                          critic_net=critic_net, **critic_param)
 
             # Record case in replay buffer
             game_state = game.get_board_state()
@@ -85,26 +75,30 @@ def train_mcts(game: TwoPlayerGame, m: int, episodes: int, record_freq: int, bat
         # Extract game result
         game_result = game.get_win_state()
 
-        # Create list of (optional) discounted states
-        target_discounted_results = game_result * state_discount ** np.asarray(range(num_moves, 0, -1))
-
         # Retrieve random minibatch of cases for actor
         states, target_probabilities = minibatch_indices(replay_buffer, batch_size)
 
+        # Train actor neural network
+        actor_net.fit(states, target_probabilities, actor_epochs, verbose)
+
+        # Train critic neural network TODO: check if critic neural network is correct
+        if critic_net:
+            # Create list of (optional) discounted states
+            target_discounted_results = game_result * state_discount ** np.asarray(range(num_moves, 0, -1))
+
+            critic_net.fit(np.asarray(episode_states), target_discounted_results, critic_epochs, verbose)
+
         print(f'state: {states[0]}')
         print(f'target probability = {target_probabilities[0]}')
-        print(f'estimated probability: {actor_model.predict(np.array([states[0]]), verbose=0)[0]}')
-
-        # Train actor neural network
-        actor_model.fit(states, target_probabilities, epochs=actor_epochs, verbose=verbose)
-
-        # Train critic neural network
-        critic_model.fit(np.asarray(episode_states), target_discounted_results, epochs=critic_epochs, verbose=verbose)
+        print(f'estimated probability: {actor_net.predict(np.array([states[0]]), 0)[0]}')
+        print(f'estimated evaluations: {critic_net.predict(np.array([states[0]]), 0)[0]}')
 
         # Save neural network weights with given frequency
         if episode % record_freq == 0:
-            actor_model.save_weights(f'trained_models/actor_model_{episode}.weights.h5', overwrite=True)
-            critic_model.save_weights(f'trained_models/critic_weights_{episode}.weights.h5', overwrite=True)
+            actor_net.save_weights(f'trained_models/actor_model_{episode}.weights.h5', True)
+
+            if critic_net:
+                critic_net.save_weights(f'trained_models/critic_weights_{episode}.weights.h5', True)
 
         # Record statistics
         if game_result == 1:
@@ -112,19 +106,24 @@ def train_mcts(game: TwoPlayerGame, m: int, episodes: int, record_freq: int, bat
         else:
             player_2_wins += 1
 
-        last_20_winners.append(game_result)
-        if len(last_20_winners) > 20:
-            last_20_winners.pop(0)
+        last_winners.append(game_result)
+        if len(last_winners) > last_winners_num:
+            last_winners.pop(0)
 
-    with open(f'{FILENAME}.txt', 'w') as f:
+    with open(f'{filename}.txt', 'w') as f:
         f.write(f'Player 1 wins: {player_1_wins}\n')
         f.write(f'Player 2 wins: {player_2_wins}\n')
-        f.write(f'Last 20 winners: {last_20_winners}\n')
+        f.write(f'Last 20 winners: {last_winners}\n')
 
 
 if __name__ == '__main__':
     # Make predictions (outputting probabilities)
-    Hex_game = Hex(HEX_HEIGHT, HEX_WIDTH)
-    Nim_game = Nim(NIM_N, NIM_K)
-    train_mcts(Hex_game, M, EPISODES, RECORD_FREQUENCY, BATCH_SIZE, ACTOR_EPOCHS, ACTOR_LAYERS, CRITIC_EPOCHS,
-               CRITIC_LAYERS, STATE_DISCOUNT, VERBOSE)
+    hex_game = Hex(HEX_HEIGHT, HEX_WIDTH)
+    nim_game = Nim(NIM_N, NIM_K)
+
+    actor_net = NeuralNet(ACTOR_LAYERS, OPTIMIZER, ACTOR_LOSS_FUNCTION, METRICS)
+    critic_net = NeuralNet(CRITIC_LAYERS, OPTIMIZER, CRITIC_LOSS_FUNCTION, METRICS)
+
+    train_mcts(hex_game, M, EPISODES, RECORD_FREQUENCY, BATCH_SIZE, FILENAME, ACTOR_EPOCHS, actor_net, C,
+               ROLLOUT_EPSILON, TIMELIMIT, VERBOSE, LAST_WINNERS_NUM, CRITIC_EPOCHS, critic_net, STATE_DISCOUNT,
+               eval_lambda=EVAL_LAMBDA)
