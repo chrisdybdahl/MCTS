@@ -3,8 +3,8 @@ from TwoPlayerGame import TwoPlayerGame
 
 
 class Hex(TwoPlayerGame):
-    def __init__(self, height, width):
-        super().__init__()
+    def __init__(self, starting_player, height, width):
+        super().__init__(starting_player)
         self.height = height
         self.width = width
         self.board = Board(height, width)
@@ -24,9 +24,9 @@ class Hex(TwoPlayerGame):
         while front:
             current_y, current_x = front.pop()
 
-            if current_x + 1 == self.width and player == 1:
+            if current_y + 1 == self.height and player == 1:  # Player_1 goes "top-down"
                 return 1
-            elif current_y + 1 == self.height and player == 2:
+            elif current_x + 1 == self.width and player == 2:  # Player_2 goes "left-right"
                 return 2
 
             explored.add((current_y, current_x))
@@ -44,8 +44,9 @@ class Hex(TwoPlayerGame):
 
         :return: state of the game
         """
-        player_1_start_coords = [(y, 0) for y in range(self.height) if self.board.get_cell(y, 0) == 1]
-        player_2_start_coords = [(0, x) for x in range(self.width) if self.board.get_cell(0, x) == 2]
+        # Find the starting coordinates for player_1 (top) and player_2 (left)
+        player_1_start_coords = [(0, x) for x in range(self.width) if self.board.get_cell(0, x) == 1]
+        player_2_start_coords = [(y, 0) for y in range(self.height) if self.board.get_cell(y, 0) == 2]
 
         for y, x in player_1_start_coords:
             leaf = self.__dfs(y, x, 1)
@@ -68,8 +69,7 @@ class Hex(TwoPlayerGame):
         return [(y, x) for y in range(self.height) for x in range(self.width)]
 
     def reset(self):
-        self.current_player = 1
-        self.win_state = 0
+        super().reset()
         self.board = Board(self.height, self.width)
 
     def choose_move(self) -> object:
@@ -104,7 +104,7 @@ class Hex(TwoPlayerGame):
         :return: flattened array of board and current player
         """
         board_player_list = self.board.get_board().flatten().tolist()
-        board_player_list.append(self.current_player)
+        board_player_list.insert(0, self.current_player)
         return board_player_list
 
     def visualize(self):
@@ -112,5 +112,5 @@ class Hex(TwoPlayerGame):
 
 
 if __name__ == '__main__':
-    game = Hex(3, 3)
+    game = Hex(1, 3, 3)
     game.play()

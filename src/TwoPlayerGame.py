@@ -1,10 +1,11 @@
 class TwoPlayerGame:
-    def __init__(self):
+    def __init__(self, starting_player: int):
         """
         Creates an instance of the game
 
         """
-        self.current_player = 1  # Assume player_1 begins
+        self.starting_player = starting_player
+        self.current_player = starting_player
         self.win_state = 0  # 0 if no winner, 1 if player_1 won, 2 if player_2 won
 
     def get_current_player(self) -> int:
@@ -44,7 +45,8 @@ class TwoPlayerGame:
         Resets the game state
 
         """
-        pass
+        self.current_player = self.starting_player
+        self.win_state = 0
 
     def choose_move(self) -> object:
         """

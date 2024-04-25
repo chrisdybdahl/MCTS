@@ -2,14 +2,14 @@ from TwoPlayerGame import TwoPlayerGame
 
 
 class Nim(TwoPlayerGame):
-    def __init__(self, n, k):
+    def __init__(self, starting_player, n, k):
         """
         Creates an instance of the NIM board and initializes parameters
 
         :param n: number of pieces on the board
         :param k: number of pieces a player maximum can take off the board
         """
-        super().__init__()
+        super().__init__(starting_player)
         self.N = n
         self.K = k
         self.pieces_left = n
@@ -21,8 +21,7 @@ class Nim(TwoPlayerGame):
         return list(range(1, self.N + 1))
 
     def reset(self):
-        self.current_player = 1
-        self.win_state = 0
+        super().reset()
         self.pieces_left = self.N
 
     def choose_move(self) -> object:
@@ -62,5 +61,5 @@ class Nim(TwoPlayerGame):
 
 
 if __name__ == '__main__':
-    game = Nim(10, 4)
+    game = Nim(1, 10, 4)
     game.play()

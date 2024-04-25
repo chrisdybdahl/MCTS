@@ -8,6 +8,8 @@ from numpy.typing import NDArray
 from NeuralNet import NeuralNet
 from Node import Node
 from TwoPlayerGame import TwoPlayerGame
+from config import D_POLICY
+from helpers import choose_actor_action
 
 
 class MCTS:
@@ -33,7 +35,7 @@ class MCTS:
         rollout_game = node.get_game()
 
         # Get all possible actions
-        all_possible_actions = rollout_game.get_all_actions()
+        possible_actions = rollout_game.get_all_actions()
 
         while not rollout_game.get_win_state():
             # Get the valid actions
@@ -43,14 +45,8 @@ class MCTS:
             if random.random() > epsilon:
                 # Estimate probabilities using actor neural network
                 game_state = rollout_game.get_board_state()
-                probabilities = actor_net.predict(np.array([game_state]), 0)[0]
-                probabilities_valid = [probability if action in valid_actions else 0
-                                       for probability, action in zip(probabilities, all_possible_actions)]
-                probabilities_valid_scaled = np.divide(probabilities_valid, sum(probabilities_valid))
 
-                # Draw action using the estimated probabilities TODO: Check if only use the action with highest prob
-                action_index = np.random.choice(len(all_possible_actions), p=probabilities_valid_scaled, replace=False)
-                action = all_possible_actions[action_index]
+                action = choose_actor_action(actor_net, possible_actions, valid_actions, game_state, D_POLICY)
             else:
                 action = random.choice(valid_actions)
             rollout_game.do_action(action)
@@ -74,11 +70,12 @@ class MCTS:
         """
         critic_game = node.get_game()
         game_state = critic_game.get_board_state()
-        critic_evaluation = critic_net.predict(np.array([game_state]), 0)[0]
+        critic_evaluation = critic_net.predict(np.array([game_state]), verbose=0)[0]
         return critic_evaluation
 
-    def run(self, game: TwoPlayerGame, m: int, actor_net: NeuralNet, c: float = 1, rollout_epsilon: float = 1
-            , timelimit: int = None, critic_net: NeuralNet = None, **critic_param) -> tuple[tuple[int, int], NDArray]:
+    def run(self, game: TwoPlayerGame, m: int, actor_net: NeuralNet, c: float = 1, rollout_epsilon: float = 1,
+            timelimit: int = None, critic_net: NeuralNet = None, eval_epsilon: float = 1) \
+            -> tuple[tuple[int, int], NDArray]:
         """
         Run the MCTS
 
@@ -89,7 +86,7 @@ class MCTS:
         :param rollout_epsilon:
         :param timelimit:
         :param critic_net:
-        :param critic_param:
+        :param eval_epsilon:
         :return: best action
         """
 
@@ -98,13 +95,6 @@ class MCTS:
 
         # Initialize new node with the given game
         root_node = Node(game)
-
-        eval_lambda = None
-        eval_epsilon = None
-        if 'eval_lambda' in critic_param:
-            eval_lambda = critic_param['eval_lambda']
-        elif 'eval_epsilon' in critic_param:
-            eval_epsilon = critic_param['eval_epsilon']
 
         for i in range(m):
             # Tree search - choose node from root to leaf node using tree policy
@@ -120,12 +110,8 @@ class MCTS:
                 expanded_node = policy_node
 
             # Leaf evaluation - estimate the value of a leaf node using the default policy
-            if eval_lambda and critic_net:  # Evaluation using a combination of rollout result and critic
-                critic_result = self.critic(expanded_node, critic_net)
-                rollout_result = self.rollout(expanded_node, actor_net, rollout_epsilon)
-                leaf_evaluation = (1 - eval_lambda) * critic_result + eval_lambda * rollout_result
-            elif eval_epsilon and critic_net:  # Evaluation using an epsilon greedy strategy to execute rollouts
-                if random.random() > eval_epsilon and critic_net:
+            if critic_net:  # Evaluation using an epsilon greedy strategy to evaluate using critic if critic net exists
+                if random.random() > eval_epsilon:
                     leaf_evaluation = self.critic(expanded_node, critic_net)
                 else:
                     leaf_evaluation = self.rollout(expanded_node, actor_net, rollout_epsilon)
@@ -135,8 +121,9 @@ class MCTS:
             # Backpropagation - passing the evaluation back up the tree, updating relevant data
             expanded_node.update(leaf_evaluation)
 
-            # Stop monte carlo search if exceeding timelimit
+            # Stop monte carlo search if runtime exceeds timelimit
             if timelimit and time.time() - timer > timelimit:
+                print(f'Timed out in iteration {i}, after {time.time() - timer} seconds')
                 break
 
         # Choose best action from the root by the highest visit count
