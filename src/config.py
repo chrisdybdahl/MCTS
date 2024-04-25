@@ -52,4 +52,4 @@ TOURNAMENT_VISUALIZE = False
 # Online tournament - Parameters
 CLIENT_D_POLICY = 'greedy'  # 'greedy' vs. 'stochastic'
 CLIENT_50_PATH = f'{FOLDER_NAME}\\actor_model_49_50.keras'
-TOKEN = '986b618d6bc948f59ab4a8aab319ddd4'  # Global parameter
+TOKEN = 'xxx'  # Global parameter
