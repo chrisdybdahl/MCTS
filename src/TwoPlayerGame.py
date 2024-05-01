@@ -81,6 +81,14 @@ class TwoPlayerGame:
         """
         pass
 
+    def set_board_state(self, board_state: list):
+        """
+        Sets the board state
+
+        :param board_state: the board state to set the board
+        """
+        pass
+
     def visualize(self):
         """
         Visualizes the game

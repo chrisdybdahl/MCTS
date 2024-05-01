@@ -15,7 +15,7 @@ class Node:
         self.game = copy.deepcopy(game)
         self.parent = parent
         self.parent_action = parent_action
-        self.unattempted_actions = game.get_actions()
+        self.valid_actions = game.get_actions()
         self.current_player = game.get_current_player()
         self.children = []
         self.children_dict = {}
@@ -40,9 +40,6 @@ class Node:
         # Add node to children
         self.children.append(expanded_node)
         self.children_dict[action] = expanded_node
-
-        # Remove action from unattempted actions
-        self.unattempted_actions.remove(action)
 
         return expanded_node
 
@@ -83,13 +80,13 @@ class Node:
         """
         return copy.deepcopy(self.game)
 
-    def get_unattempted_actions(self) -> list:
+    def get_valid_actions(self) -> list:
         """
         Returns the current node's possible actions
 
         :return: list of the node's possible actions
         """
-        return self.unattempted_actions
+        return self.valid_actions
 
     def get_children(self) -> list:
         """

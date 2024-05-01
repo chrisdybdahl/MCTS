@@ -51,8 +51,8 @@ class NeuralNet:
 
     def save(self, path: str, overwrite: bool = False):
         """
-        Saves the weights of the neural network to the specified path
-        :param path: the path to save the weights
-        :param overwrite: whether to overwrite the existing weights
-        """
+            Saves the weights of the neural network to the specified path
+            :param path: the path to save the weights
+            :param overwrite: whether to overwrite the existing weights
+            """
         self.model.save(path, overwrite=overwrite)

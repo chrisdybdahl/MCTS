@@ -13,7 +13,7 @@ from helpers import choose_actor_action
 
 
 class MCTS:
-    def __init__(self, tree_policy_func: Callable[[Node, float], Node]):
+    def __init__(self, tree_policy_func: Callable[[Node, float], tuple[Node, ...]]):
         """
         Initialize MCTS parameters here
 
@@ -98,19 +98,13 @@ class MCTS:
         root_node = Node(game)
 
         for i in range(m):
-            # print(f'Iteration {i + 1}/{m}')
-
             # Tree search - choose node from root to leaf node using tree policy
-            policy_node = self.tree_policy_func(root_node, c)
+            policy_node, policy_action = self.tree_policy_func(root_node, c)
 
-            # Node expansion - generate some or all child states of a parent state
+            # Node expansion - generate a child state of the parent state
             children_dict = policy_node.get_children_dict()
-            valid_actions = policy_node.get_unattempted_actions() + list(children_dict.keys())
-            if valid_actions:
-                action = random.choice(valid_actions)
-                expanded_node = children_dict[action] if action in children_dict.keys() else policy_node.expand(action)
-            else:
-                expanded_node = policy_node
+            expanded_node = children_dict[
+                policy_action] if policy_action in children_dict.keys() else policy_node.expand(policy_action)
 
             # Leaf evaluation - estimate the value of a leaf node using the default policy
             if critic_net:  # Probability p to evaluate using rollout and (1 - p) using critic if it exists
@@ -135,10 +129,12 @@ class MCTS:
 
         # Action probabilities from the root
         all_actions = game.get_all_actions()
+        valid_actions = game.get_actions()
         children_dict = root_node.get_children_dict()
 
-        all_actions_visits = [children_dict[action].get_visits() if action in children_dict.keys()
-                              else 0 for action in all_actions]
+        all_actions_visits = [
+            children_dict[action].get_visits() if action in children_dict.keys() and action in valid_actions else 0 for
+            action in all_actions]
         action_probabilities = np.divide(all_actions_visits, root_node.get_visits())
 
         return best_action, action_probabilities

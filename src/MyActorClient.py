@@ -30,6 +30,9 @@ class MyActionClient(ActorClient):
         self.hex_game = Hex(start_player, self.size, self.size)
 
     def handle_get_action(self, state):
+        # Update the Hex game
+        self.hex_game.set_board_state(state)
+
         # Use simulation of Hex game to retrieve possible and valid moves
         possible_actions = self.hex_game.get_all_actions()
         valid_actions = self.hex_game.get_actions()
@@ -37,6 +40,4 @@ class MyActionClient(ActorClient):
         # Use the actor to choose an action
         row, col = self.actor.get_action(state, possible_actions, valid_actions)
 
-        # Update the Hex game
-        self.hex_game.do_action((row, col))
-        return row, col
+        return int(row), int(col)

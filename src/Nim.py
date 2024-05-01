@@ -18,7 +18,7 @@ class Nim(TwoPlayerGame):
         return list(range(1, min(self.pieces_left, self.K) + 1))
 
     def get_all_actions(self) -> list:
-        return list(range(1, self.N + 1))
+        return list(range(1, self.K + 1))
 
     def reset(self):
         super().reset()
@@ -51,7 +51,16 @@ class Nim(TwoPlayerGame):
 
         :return: number of pieces left
         """
-        return [self.pieces_left, self.current_player]
+        return [self.current_player, self.pieces_left]
+
+    def set_board_state(self, board_state: list):
+        """
+        Sets the board state
+
+        :param board_state: the board state to set
+        """
+        self.current_player = board_state[0]
+        self.pieces_left = board_state[1]
 
     def visualize(self):
         """

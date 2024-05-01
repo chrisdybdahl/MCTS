@@ -1,3 +1,5 @@
+import numpy as np
+
 from Board import Board
 from TwoPlayerGame import TwoPlayerGame
 
@@ -106,6 +108,15 @@ class Hex(TwoPlayerGame):
         board_player_list = self.board.get_board().flatten().tolist()
         board_player_list.insert(0, self.current_player)
         return board_player_list
+
+    def set_board_state(self, board_state: list):
+        """
+        Sets the board state
+
+        :param board_state: the board state to set the board
+        """
+        self.current_player = board_state[0]
+        self.board.set_board(np.reshape(board_state[1:], (self.height, self.width)))
 
     def visualize(self):
         self.board.print_board()

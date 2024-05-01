@@ -81,3 +81,11 @@ class Board:
         :return: board array
         """
         return self.board.copy()
+
+    def set_board(self, board: NDArray):
+        """
+        Sets the board state
+
+        :param board: the board to set
+        """
+        self.board = board

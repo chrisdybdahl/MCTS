@@ -1,46 +1,68 @@
+import random
+
 import numpy as np
 
-from Node import Node
 from NeuralNet import NeuralNet
+from Node import Node
 
 
-def uct_score(root_node: Node, c: float) -> Node | None:
-    # Lambda function to retrieve the exploration bonus of a certain node
-    uct = lambda child_visits, parent_visits, a: a * np.sqrt(np.log(parent_visits) / (child_visits + 1))
+def __uct(child_visits: int, parent_visits: int, c: float) -> float:
+    return c * np.sqrt(np.log(parent_visits) / (child_visits + 1))
 
+
+def __final_score(parent_node: Node, action: object, c: float, current_player: int) -> float:
+    children_dict = parent_node.get_children_dict()
+
+    if action in children_dict.keys():
+        child_node = children_dict[action]
+        q_value = child_node.get_q()
+        uct = __uct(child_node.get_visits(), parent_node.get_visits(), c)
+        score = q_value + uct if current_player == 1 else q_value - uct
+    else:
+        score = __uct(0, parent_node.get_visits(), c)
+
+    return score
+
+
+def uct_score(root_node: Node, c: float) -> tuple[Node, ...]:
     # BFS search for finding nodes which can be expanded further
     pre_existing_nodes = []
     queue = [root_node]
 
     while queue:
         current_node = queue.pop(0)
-        pre_existing_nodes.append(current_node)
-        # Enqueue child nodes
-        for child_node in current_node.get_children():
-            queue.append(child_node)
+        # Enqueue existing child nodes to search through existing nodes in tree
+        for node in current_node.get_children():
+            queue.append(node)
+
+        # Add tuple of parent node and action in list
+        valid_actions = current_node.get_valid_actions()
+        for valid_action in valid_actions:
+            pre_existing_nodes.append((current_node, valid_action))
 
     # Record which player's turn it is
     current_player = root_node.get_current_player()
 
+    # Shuffle in case there are multiple maximums
+    random.shuffle(pre_existing_nodes)
+
     # Find the greedy best action choice by assessing the combination of q score and exploration bonus
     if current_player == 1:
-        return max(pre_existing_nodes,
-                   key=lambda child: child.get_q() + uct(child.get_visits(), root_node.get_visits(), c))
+        return max(pre_existing_nodes, key=lambda x: __final_score(x[0], x[1], c, current_player))
     else:
-        return min(pre_existing_nodes,
-                   key=lambda child: child.get_q() - uct(child.get_visits(), root_node.get_visits(), c))
+        return min(pre_existing_nodes, key=lambda x: __final_score(x[0], x[1], c, current_player))
 
 
-def minibatch_indices(replay_buffer, batch_size):
+def minibatch_indices(replay_buffer: list[...], batch_size: int):
     num_cases = len(replay_buffer[0])
     indices = np.random.choice(num_cases, size=min(num_cases, batch_size), replace=False)
     states = np.array(replay_buffer[0])[indices]
-    target_probabilities = np.array(replay_buffer[1])[indices]
-    return states, target_probabilities
+    targets = np.array(replay_buffer[1])[indices]
+    return states, targets
 
 
-def choose_actor_action(actor_net: NeuralNet, possible_actions: list[tuple[int, int]],
-                        valid_actions: list[tuple[int, int]], game_state: list[int], d_policy: str = 'greedy'):
+def choose_actor_action(actor_net: NeuralNet, possible_actions: list[...],
+                        valid_actions: list[...], game_state: list[int], d_policy: str = 'greedy'):
     """
     Choose an action given a state from actor neural network
 
