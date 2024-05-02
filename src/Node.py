@@ -16,6 +16,7 @@ class Node:
         self.parent = parent
         self.parent_action = parent_action
         self.valid_actions = game.get_actions()
+        self.untried_actions = self.valid_actions
         self.current_player = game.get_current_player()
         self.children = []
         self.children_dict = {}
@@ -40,6 +41,7 @@ class Node:
         # Add node to children
         self.children.append(expanded_node)
         self.children_dict[action] = expanded_node
+        self.untried_actions.remove(action)
 
         return expanded_node
 
@@ -87,6 +89,14 @@ class Node:
         :return: list of the node's possible actions
         """
         return self.valid_actions
+
+    def get_untried_actions(self) -> list:
+        """
+        Returns the current node's untried actions
+
+        :return: list of the node's untried actions
+        """
+        return self.untried_actions
 
     def get_children(self) -> list:
         """

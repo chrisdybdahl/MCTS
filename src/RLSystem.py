@@ -6,12 +6,12 @@ from MCTS import MCTS
 from NeuralNet import NeuralNet
 from Nim import Nim
 from TwoPlayerGame import TwoPlayerGame
-from config import (FILENAME, EPISODES, RECORD_FREQUENCY, M, ACTOR_EPOCHS, ACTOR_LAYERS, CRITIC_EPOCHS,
-                    CRITIC_LAYERS, HEX_HEIGHT, HEX_WIDTH, NIM_N, NIM_K, BATCH_SIZE, STATE_DISCOUNT, VERBOSE,
+from config import (FILENAME, EPISODES, RECORD_FREQUENCY, M, ACTOR_EPOCHS, ACTOR_LAYERS, CRITIC_LAYERS, HEX_HEIGHT,
+                    HEX_WIDTH, NIM_N, NIM_K, BATCH_SIZE, VERBOSE,
                     OPTIMIZER, ACTOR_LOSS_FUNCTION, METRICS, CRITIC_LOSS_FUNCTION, LAST_WINNERS_NUM,
-                    ROLLOUT_EPSILON, TIMELIMIT, C, ROLLOUT_EPSILON_DECAY, MIN_ROLLOUT_EPSILON, EVAL_EPSILON, VISUALIZE,
+                    ROLLOUT_EPSILON, TIMELIMIT, C, ROLLOUT_EPSILON_DECAY, MIN_ROLLOUT_EPSILON, VISUALIZE,
                     ACTOR_LEARNING_RATE, HEX_STARTING_PLAYER, NIM_STARTING_PLAYER, FOLDER_NAME, CRITIC_LEARNING_RATE,
-                    EVAL_EPSILON_DECAY, MIN_EVAL_EPSILON, ACTOR_PATH, CRITIC_PATH)
+                    EVAL_EPSILON_DECAY, MIN_EVAL_EPSILON, ACTOR_PATH, CRITIC_PATH, START, NIM_ACTOR_LAYERS)
 from helpers import uct_score, minibatch_indices
 
 folder_path = f'{os.getcwd()}\\{FOLDER_NAME}'
@@ -128,17 +128,26 @@ def rl_mcts(game: TwoPlayerGame, m: int, episodes: int, record_freq: int, batch_
         # Save neural network weights with given frequency
         if episode == 0 or (episode + 1) % record_freq == 0:
             num_moves = len(game.get_all_actions())
-            print(f'Saving actor model to: {folder_path}\\actor_model_{num_moves}_{episode + 1}.keras')
-            actor_net.save(path=f'{folder_path}\\actor_model_{num_moves}_{episode + 1}.keras', overwrite=True)
+            print(f'Saving actor model to: {folder_path}\\actor_model_{num_moves}_{episode + 1 + START}.keras')
+            actor_net.save(path=f'{folder_path}\\actor_model_{num_moves}_{episode + 1 + START}.keras', overwrite=True)
 
             if critic_net:
                 print(
-                    f'Saving critic model to: {folder_path}\\critic_model_{num_moves}_{episode + 1}.keras')
-                critic_net.save(path=f'{folder_path}\\critic_model_{num_moves}_{episode + 1}.keras', overwrite=True)
+                    f'Saving critic model to: {folder_path}\\critic_model_{num_moves}_{episode + 1 + START}.keras')
+                critic_net.save(path=f'{folder_path}\\critic_model_{num_moves}_{episode + 1 + START}.keras',
+                                overwrite=True)
 
         last_winners.append(winner)
         if len(last_winners) > last_winners_num:
             last_winners.pop(0)
+
+        if len(replay_buffer_actor[0]) > 2000:
+            replay_buffer_actor[0] = replay_buffer_actor[0][-2000:]
+            replay_buffer_actor[1] = replay_buffer_actor[1][-2000:]
+
+        if len(replay_buffer_critic[0]) > 2000:
+            replay_buffer_critic[0] = replay_buffer_critic[0][-2000:]
+            replay_buffer_critic[1] = replay_buffer_critic[1][-2000:]
 
         print(f'Runtime: {time.time() - timer} seconds')
 
@@ -155,6 +164,11 @@ if __name__ == '__main__':
     actor_net = NeuralNet(ACTOR_PATH, ACTOR_LAYERS, OPTIMIZER, ACTOR_LOSS_FUNCTION, ACTOR_LEARNING_RATE, METRICS)
     critic_net = NeuralNet(CRITIC_PATH, CRITIC_LAYERS, OPTIMIZER, CRITIC_LOSS_FUNCTION, CRITIC_LEARNING_RATE, METRICS)
 
-    rl_mcts(hex_game, M, EPISODES, RECORD_FREQUENCY, BATCH_SIZE, FILENAME, ACTOR_EPOCHS, actor_net, C,
+    nim_actor_net = NeuralNet(None, NIM_ACTOR_LAYERS, OPTIMIZER, ACTOR_LOSS_FUNCTION, ACTOR_LEARNING_RATE, METRICS)
+    nim_critic_net = NeuralNet(None, CRITIC_LAYERS, OPTIMIZER, CRITIC_LOSS_FUNCTION, CRITIC_LEARNING_RATE, METRICS)
+
+    """rl_mcts(hex_game, M, EPISODES, RECORD_FREQUENCY, BATCH_SIZE, FILENAME, ACTOR_EPOCHS, actor_net, C,
             ROLLOUT_EPSILON, TIMELIMIT, VISUALIZE, VERBOSE, LAST_WINNERS_NUM, CRITIC_EPOCHS, critic_net, STATE_DISCOUNT,
-            EVAL_EPSILON)
+            EVAL_EPSILON)"""
+    rl_mcts(nim_game, M, EPISODES, RECORD_FREQUENCY, BATCH_SIZE, FILENAME, ACTOR_EPOCHS, nim_actor_net, C,
+            ROLLOUT_EPSILON, TIMELIMIT, VISUALIZE, VERBOSE, LAST_WINNERS_NUM)

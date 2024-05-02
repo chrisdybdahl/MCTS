@@ -3,7 +3,7 @@ import copy
 from ActorClient import ActorClient
 from Hex import Hex
 from MyHexActor import MyHexActor
-from config import TOKEN
+from config import TOKEN, CLIENT_VISUALIZE
 
 
 class MyActionClient(ActorClient):
@@ -32,6 +32,8 @@ class MyActionClient(ActorClient):
     def handle_get_action(self, state):
         # Update the Hex game
         self.hex_game.set_board_state(state)
+        if CLIENT_VISUALIZE:
+            self.hex_game.visualize()
 
         # Use simulation of Hex game to retrieve possible and valid moves
         possible_actions = self.hex_game.get_all_actions()

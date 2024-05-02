@@ -8,8 +8,9 @@ from Hex import Hex
 from NeuralNet import NeuralNet
 from TwoPlayerGame import TwoPlayerGame
 from config import HEX_STARTING_PLAYER, HEX_HEIGHT, HEX_WIDTH, TOURNAMENT_FOLDER, NUM_MATCHES, \
-    TOURNAMENT_VISUALIZE, TOURNAMENT_FILENAME, TOURNAMENT_D_POLICY
+    TOURNAMENT_VISUALIZE, TOURNAMENT_FILENAME, TOURNAMENT_D_POLICY, NIM_STARTING_PLAYER, NIM_N, NIM_K
 from helpers import choose_actor_action
+from Nim import Nim
 
 
 class Tournament:
@@ -147,6 +148,7 @@ class Tournament:
 
 if __name__ == "__main__":
     hex_game = Hex(HEX_STARTING_PLAYER, HEX_HEIGHT, HEX_WIDTH)
+    nim_game = Nim(NIM_STARTING_PLAYER, NIM_N, NIM_K)
     tournament = Tournament(hex_game)
     tournament.play_tournament(TOURNAMENT_FOLDER, num_matches=NUM_MATCHES, visualize=TOURNAMENT_VISUALIZE,
                                filename=TOURNAMENT_FILENAME)

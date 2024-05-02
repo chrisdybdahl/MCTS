@@ -97,15 +97,41 @@ class MCTS:
         # Initialize new node with the given game
         root_node = Node(game)
 
+        tree_time = 0
+        expansion_time = 0
+        evaluation_time = 0
+        backpropogation_time = 0
+
         for i in range(m):
+            # print(i)
+            timer_i = time.time_ns()
             # Tree search - choose node from root to leaf node using tree policy
             policy_node, policy_action = self.tree_policy_func(root_node, c)
+            tree_time += (time.time_ns() - timer_i)
+            # print(f'tree search: {time.time_ns() - timer_i}')
 
+            timer_i = time.time_ns()
             # Node expansion - generate a child state of the parent state
             children_dict = policy_node.get_children_dict()
-            expanded_node = children_dict[
-                policy_action] if policy_action in children_dict.keys() else policy_node.expand(policy_action)
 
+            """valid_actions = policy_node.get_valid_actions()
+            untried_actions = [action for action in valid_actions if action not in children_dict.keys()]
+            if untried_actions:
+                action = random.choice(untried_actions)
+                expanded_node = policy_node.expand(action)
+            else:
+                action = policy_action
+                expanded_node = children_dict[action]
+            """
+
+            if policy_action in children_dict.keys():
+                expanded_node = children_dict[policy_action]
+            else:
+                expanded_node = policy_node.expand(policy_action)
+            expansion_time += (time.time_ns() - timer_i)
+            # print(f'node expansion: {time.time_ns() - timer_i}')
+
+            timer_i = time.time_ns()
             # Leaf evaluation - estimate the value of a leaf node using the default policy
             if critic_net:  # Probability p to evaluate using rollout and (1 - p) using critic if it exists
                 if random.random() > eval_epsilon:
@@ -114,14 +140,24 @@ class MCTS:
                     leaf_evaluation = self.rollout(expanded_node, actor_net, rollout_epsilon)
             else:
                 leaf_evaluation = self.rollout(expanded_node, actor_net, rollout_epsilon)
+            evaluation_time += (time.time_ns() - timer_i)
+            # print(f'leaf evaluation: {time.time_ns() - timer_i}')
 
+            timer_i = time.time_ns()
             # Backpropagation - passing the evaluation back up the tree, updating relevant data
             expanded_node.update(leaf_evaluation)
+            backpropogation_time += (time.time_ns() - timer_i)
+            # print(f'backpropagation: {time.time_ns() - timer_i}')
 
             # Stop monte carlo search if runtime exceeds timelimit
             if timelimit and time.time() - timer > timelimit:
                 print(f'Timed out in iteration {i + 1}/{m}, after {time.time() - timer} seconds')
                 break
+
+        print(f'Tree search time: {tree_time} seconds')
+        print(f'Expansion time: {expansion_time} seconds')
+        print(f'Evaluation time: {evaluation_time} seconds')
+        print(f'Backpropogation time: {backpropogation_time} seconds')
 
         # Choose best action from the root by the highest visit count
         best_child = max(root_node.get_children(), key=lambda child: child.get_visits())

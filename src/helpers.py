@@ -17,11 +17,19 @@ def __final_score(parent_node: Node, action: object, c: float, current_player: i
         child_node = children_dict[action]
         q_value = child_node.get_q()
         uct = __uct(child_node.get_visits(), parent_node.get_visits(), c)
-        score = q_value + uct if current_player == 1 else q_value - uct
+        score = (q_value + uct) if current_player == 1 else (q_value - uct)
     else:
         score = __uct(0, parent_node.get_visits(), c)
 
     return score
+
+
+def minibatch_indices(replay_buffer: list[...], batch_size: int):
+    num_cases = len(replay_buffer[0])
+    indices = np.random.choice(num_cases, size=min(num_cases, batch_size), replace=False)
+    states = np.array(replay_buffer[0])[indices]
+    targets = np.array(replay_buffer[1])[indices]
+    return states, targets
 
 
 def uct_score(root_node: Node, c: float) -> tuple[Node, ...]:
@@ -31,6 +39,14 @@ def uct_score(root_node: Node, c: float) -> tuple[Node, ...]:
 
     while queue:
         current_node = queue.pop(0)
+
+        # If current node has untried action
+        untried_actions = current_node.get_untried_actions()
+        if untried_actions:
+            action = random.choice(untried_actions)
+            # print(f'pieces left: {current_node.get_game().get_board_state()}, action: {action}')
+            return current_node, action
+
         # Enqueue existing child nodes to search through existing nodes in tree
         for node in current_node.get_children():
             queue.append(node)
@@ -40,25 +56,16 @@ def uct_score(root_node: Node, c: float) -> tuple[Node, ...]:
         for valid_action in valid_actions:
             pre_existing_nodes.append((current_node, valid_action))
 
+    print(f'pre_existing_nodes: {pre_existing_nodes}')
+
     # Record which player's turn it is
     current_player = root_node.get_current_player()
-
-    # Shuffle in case there are multiple maximums
-    random.shuffle(pre_existing_nodes)
 
     # Find the greedy best action choice by assessing the combination of q score and exploration bonus
     if current_player == 1:
         return max(pre_existing_nodes, key=lambda x: __final_score(x[0], x[1], c, current_player))
     else:
         return min(pre_existing_nodes, key=lambda x: __final_score(x[0], x[1], c, current_player))
-
-
-def minibatch_indices(replay_buffer: list[...], batch_size: int):
-    num_cases = len(replay_buffer[0])
-    indices = np.random.choice(num_cases, size=min(num_cases, batch_size), replace=False)
-    states = np.array(replay_buffer[0])[indices]
-    targets = np.array(replay_buffer[1])[indices]
-    return states, targets
 
 
 def choose_actor_action(actor_net: NeuralNet, possible_actions: list[...],
