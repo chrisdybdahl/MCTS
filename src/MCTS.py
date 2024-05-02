@@ -1,3 +1,4 @@
+import copy
 import random
 import time
 from typing import Callable
@@ -10,6 +11,136 @@ from Node import Node
 from TwoPlayerGame import TwoPlayerGame
 from config import D_POLICY
 from helpers import choose_actor_action
+
+
+class MonteCarloTreeSearchNode:
+    def __init__(self, game: TwoPlayerGame, parent=None, parent_action: tuple[int, int] = None):
+        """
+        Initializes the node
+
+        :param game: game in its current state
+        :param parent_action: action leading to this node
+        :param parent: parent node leading to this node
+        """
+        self.game = copy.deepcopy(game)
+        self.parent = parent
+        self.parent_action = parent_action
+        self.valid_actions = game.get_actions()
+        self.untried_actions = self.valid_actions
+        self.current_player = game.get_current_player()
+        self.children = []
+        self.children_dict = {}
+        self.visits = 0
+        self.sum_evaluation = 0
+        self.q = 0
+
+    def get_untried_actions(self) -> list:
+        self.untried_actions = self.game.get_actions()
+        return self.untried_actions
+
+    def get_current_player(self) -> int:
+        return self.current_player
+
+    def get_parent_action(self):
+        return self.parent_action
+
+    def get_q(self) -> float:
+        return self.q
+
+    def get_visits(self) -> int:
+        return self.visits
+
+    def expand(self):
+        # Execute move in copied game
+        expanded_game = copy.deepcopy(self.game)
+        action = self.untried_actions.pop()
+        expanded_game.do_action(action)
+
+        # Create new node with the copied changed game
+        expanded_node = MonteCarloTreeSearchNode(expanded_game, self, action)
+
+        # Add node to children
+        self.children.append(expanded_node)
+        self.children_dict[action] = expanded_node
+        self.untried_actions.remove(action)
+
+        return expanded_node
+
+    def is_terminal(self) -> bool:
+        return self.game.get_win_state() != 0
+
+    def is_fully_expanded(self) -> bool:
+        return len(self.untried_actions) == 0
+
+    def rollout(self, actor_net: NeuralNet, epsilon: float) -> float:
+        rollout_game = copy.deepcopy(self.game)
+
+        while rollout_game.get_win_state():
+            action = self.rollout_policy(rollout_game, actor_net, epsilon)
+
+            rollout_game.do_action(action)
+
+        return rollout_game.get_win_state()
+
+    def backpropagate(self, result):
+        self.visits += 1
+        self.sum_evaluation += result
+        self.q = self.sum_evaluation / self.visits
+
+        if self.parent:
+            self.parent.update(result)
+
+    def best_child(self, c, current_player):
+        if current_player == 1:
+            choices_weights = [child.get_q() + c * np.sqrt(np.log(self.get_visits()) / (child.get_visits() + 1)) for child
+                               in self.children]
+            return self.children[np.argmax(choices_weights)]
+        else:
+            choices_weights = [child.get_q() - c * np.sqrt(np.log(self.get_visits()) / (child.get_visits() + 1)) for child
+                               in self.children]
+            return self.children[np.argmin(choices_weights)]
+
+    @staticmethod
+    def rollout_policy(game: TwoPlayerGame, actor_net: NeuralNet, epsilon: float):
+        # Get the valid actions
+        valid_actions = game.get_actions()
+        possible_actions = game.get_all_actions()
+
+        # Probability p to make random move and (1 - p) to make move from actor in rollout game
+        if random.random() > epsilon:
+            # Extract game state
+            game_state = game.get_board_state()
+
+            # Estimate probabilities using actor neural network, either greedily or stochastically
+            action = choose_actor_action(actor_net, possible_actions, valid_actions, game_state, D_POLICY)
+        else:
+            action = random.choice(valid_actions)
+        return action
+
+    def tree_policy(self):
+        current_node = self
+
+        while not current_node.is_terminal():
+            if not current_node.is_terminal():
+                return current_node.expand()
+
+        return current_node
+
+    def best_action(self, m: int, c: float, e: float, actor_net: NeuralNet, player: int):
+        for _ in range(m):
+            v = self.tree_policy()
+            reward = v.rollout(actor_net, e)
+            v.backpropagate(reward)
+
+        return self.best_child(c, player)
+
+
+def main(game: TwoPlayerGame, m: int, actor_net: NeuralNet, c: float = 1, e: float = 1):
+    root = MonteCarloTreeSearchNode(game)
+    current_player = root.get_current_player()
+    selected_node = root.best_action(m, c, e, actor_net, current_player)
+
+    return selected_node
 
 
 class MCTS:
@@ -97,20 +228,15 @@ class MCTS:
         # Initialize new node with the given game
         root_node = Node(game)
 
-        tree_time = 0
-        expansion_time = 0
-        evaluation_time = 0
-        backpropogation_time = 0
-
         for i in range(m):
-            # print(i)
-            timer_i = time.time_ns()
-            # Tree search - choose node from root to leaf node using tree policy
-            policy_node, policy_action = self.tree_policy_func(root_node, c)
-            tree_time += (time.time_ns() - timer_i)
-            # print(f'tree search: {time.time_ns() - timer_i}')
+            x = self.tree_policy_func(root_node, c)
 
-            timer_i = time.time_ns()
+            # Tree search - choose node from root to leaf node using tree policy
+            if x is None:
+                continue
+            else:
+                policy_node, policy_action = x
+
             # Node expansion - generate a child state of the parent state
             children_dict = policy_node.get_children_dict()
 
@@ -121,17 +247,11 @@ class MCTS:
                 expanded_node = policy_node.expand(action)
             else:
                 action = policy_action
-                expanded_node = children_dict[action]
-            """
+                expanded_node = children_dict[action]"""
 
-            if policy_action in children_dict.keys():
-                expanded_node = children_dict[policy_action]
-            else:
-                expanded_node = policy_node.expand(policy_action)
-            expansion_time += (time.time_ns() - timer_i)
-            # print(f'node expansion: {time.time_ns() - timer_i}')
+            expanded_node = children_dict[
+                policy_action] if policy_action in children_dict.keys() else policy_node.expand(policy_action)
 
-            timer_i = time.time_ns()
             # Leaf evaluation - estimate the value of a leaf node using the default policy
             if critic_net:  # Probability p to evaluate using rollout and (1 - p) using critic if it exists
                 if random.random() > eval_epsilon:
@@ -140,24 +260,14 @@ class MCTS:
                     leaf_evaluation = self.rollout(expanded_node, actor_net, rollout_epsilon)
             else:
                 leaf_evaluation = self.rollout(expanded_node, actor_net, rollout_epsilon)
-            evaluation_time += (time.time_ns() - timer_i)
-            # print(f'leaf evaluation: {time.time_ns() - timer_i}')
 
-            timer_i = time.time_ns()
             # Backpropagation - passing the evaluation back up the tree, updating relevant data
             expanded_node.update(leaf_evaluation)
-            backpropogation_time += (time.time_ns() - timer_i)
-            # print(f'backpropagation: {time.time_ns() - timer_i}')
 
             # Stop monte carlo search if runtime exceeds timelimit
             if timelimit and time.time() - timer > timelimit:
                 print(f'Timed out in iteration {i + 1}/{m}, after {time.time() - timer} seconds')
                 break
-
-        print(f'Tree search time: {tree_time} seconds')
-        print(f'Expansion time: {expansion_time} seconds')
-        print(f'Evaluation time: {evaluation_time} seconds')
-        print(f'Backpropogation time: {backpropogation_time} seconds')
 
         # Choose best action from the root by the highest visit count
         best_child = max(root_node.get_children(), key=lambda child: child.get_visits())

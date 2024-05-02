@@ -1,5 +1,3 @@
-import random
-
 import numpy as np
 
 from NeuralNet import NeuralNet
@@ -40,12 +38,12 @@ def uct_score(root_node: Node, c: float) -> tuple[Node, ...]:
     while queue:
         current_node = queue.pop(0)
 
-        # If current node has untried action
+        """# If current node has untried action
         untried_actions = current_node.get_untried_actions()
         if untried_actions:
             action = random.choice(untried_actions)
             # print(f'pieces left: {current_node.get_game().get_board_state()}, action: {action}')
-            return current_node, action
+            return current_node, action"""
 
         # Enqueue existing child nodes to search through existing nodes in tree
         for node in current_node.get_children():
@@ -56,10 +54,11 @@ def uct_score(root_node: Node, c: float) -> tuple[Node, ...]:
         for valid_action in valid_actions:
             pre_existing_nodes.append((current_node, valid_action))
 
-    print(f'pre_existing_nodes: {pre_existing_nodes}')
-
     # Record which player's turn it is
     current_player = root_node.get_current_player()
+
+    if len(pre_existing_nodes) == 0:
+        return None
 
     # Find the greedy best action choice by assessing the combination of q score and exploration bonus
     if current_player == 1:
