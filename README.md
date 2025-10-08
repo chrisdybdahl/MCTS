@@ -155,3 +155,7 @@ Install with: `poetry install`
 - For production use, consider optimizing the neural network training pipeline
 - The online client requires a valid SSL certificate and authentication token
 - Trained models are saved in the `trained_models/` directory
+
+## License
+
+MIT License
